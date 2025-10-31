@@ -1,206 +1,144 @@
-
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gestion Comptes - PWA</title>
-  <meta name="description" content="Prototype PWA: gérer 2 comptes (courant + livret) en local, recettes, dépenses, prévision et solde estimé." />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    :root{--bg:#f6f7fb;--card:#ffffff;--accent:#3b82f6;--muted:#6b7280}
-    *{box-sizing:border-box}
-    body{font-family:Inter, system-ui, -apple-system, "Helvetica Neue", Arial; margin:0; background:var(--bg); color:#0f172a}
-    .wrap{max-width:980px;margin:20px auto;padding:18px}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between}
-    h1{font-size:20px;margin:0}
-    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
-    .card{background:var(--card);padding:12px;border-radius:14px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
-    .balance{font-weight:700;font-size:20px}
-    .muted{color:var(--muted);font-size:13px}
-    .grid{display:grid;grid-template-columns:1fr 360px;gap:12px;margin-top:12px}
-    .left{display:flex;flex-direction:column;gap:12px}
-    form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    input,select{padding:10px;border-radius:10px;border:1px solid #e6e9ef;background:#fff;min-width:0}
-    .btn{background:var(--accent);color:#fff;padding:10px 12px;border-radius:10px;border:none}
-    .tx-list{max-height:360px;overflow:auto}
-    .tx{display:flex;justify-content:space-between;padding:8px;border-radius:8px;margin-bottom:6px}
-    .tx.income{background:linear-gradient(90deg,rgba(34,197,94,0.08),transparent)}
-    .tx.expense{background:linear-gradient(90deg,rgba(239,68,68,0.06),transparent)}
-    .small{font-size:12px;color:var(--muted)}
-    .chart-wrap{background:linear-gradient(180deg, #fff, #fbfdff);padding:12px;border-radius:12px}
-    footer{margin-top:14px;font-size:13px;color:var(--muted)}
-    @media (max-width:900px){.grid{grid-template-columns:1fr}}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion Comptes</title>
+<meta name="description" content="PWA locale pour gérer 2 comptes (courant + livret) - recettes, dépenses, prévision.">
+<link rel="manifest" href="/manifest.json">
+<style>
+body{font-family:Inter, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; background:#f6f7fb; margin:0; padding:20px}
+.wrap{max-width:980px;margin:0 auto;padding:18px}
+.card{background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+input, select, button{padding:10px; margin:6px 0; border-radius:8px; border:1px solid #e6e9ef; font-size:15px}
+button{background:#3b82f6; color:#fff; border:none; padding:10px 14px; cursor:pointer}
+.tx{display:flex; justify-content:space-between; margin-bottom:6px; padding:8px; border-radius:8px}
+.tx.income{background:linear-gradient(90deg,rgba(34,197,94,0.06),transparent)}
+.tx.expense{background:linear-gradient(90deg,rgba(239,68,68,0.04),transparent)}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.small{font-size:13px;color:#6b7280}
+.summary-grid{display:flex;gap:12px;flex-wrap:wrap}
+.summary-grid > div{flex:1; min-width:120px; text-align:center}
+.balance{font-weight:700;font-size:20px}
+footer{font-size:13px;color:#6b7280;margin-top:12px}
+</style>
 </head>
 <body>
   <div class="wrap">
-    <header>
+    <div class="header">
       <div>
-        <h1>Pourquoi — Gestion de comptes</h1>
-        <div class="small">Prototype PWA — données 100% locales</div>
+        <h1 style="margin:0 0 6px 0">Mes comptes — PWA locale</h1>
+        <div class="small">Prototype — données 100% locales</div>
       </div>
-      <div class="muted">2 comptes : Compte courant & Livret</div>
-    </header>
-
-    <div class="cards" id="accountsContainer"></div>
-
-    <div class="grid">
-      <div class="left">
-        <div class="card">
-          <strong>Ajouter transaction</strong>
-          <form id="txForm">
-            <select id="accountSelect" required>
-              <option value="courant">Compte courant</option>
-              <option value="livret">Livret</option>
-            </select>
-            <select id="typeSelect">
-              <option value="expense">Dépense</option>
-              <option value="income">Recette</option>
-            </select>
-            <input id="label" placeholder="Libellé (ex : Courses)" required />
-            <input id="amount" type="number" step="0.01" placeholder="Montant" required />
-            <input id="date" type="date" required />
-            <button class="btn" type="submit">Ajouter</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <strong>Transactions récentes</strong>
-          <div class="tx-list" id="txList"></div>
-        </div>
-
-        <div class="card">
-          <strong>Prévision du mois</strong>
-          <div class="small">Estimation du solde en fin de mois (basée sur la moyenne journalière nette)</div>
-          <div style="margin-top:10px" id="forecastArea"></div>
-        </div>
-      </div>
-
-      <aside>
-        <div class="card chart-wrap">
-          <strong>Évolution du solde</strong>
-          <canvas id="balanceChart" height="240"></canvas>
-        </div>
-
-        <div style="height:12px"></div>
-
-        <div class="card">
-          <strong>Résumé</strong>
-          <div class="small">Total recettes / dépenses / solde</div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <div style="flex:1;text-align:center">
-              <div class="muted">Recettes</div>
-              <div id="totalIncome" class="balance">0 €</div>
-            </div>
-            <div style="flex:1;text-align:center">
-              <div class="muted">Dépenses</div>
-              <div id="totalExpense" class="balance">0 €</div>
-            </div>
-            <div style="flex:1;text-align:center">
-              <div class="muted">Solde</div>
-              <div id="totalBalance" class="balance">0 €</div>
-            </div>
-          </div>
-        </div>
-      </aside>
+      <div class="small">Compte courant + Livret</div>
     </div>
 
-    <footer>
-      Astuce : pour installer comme app sur iPhone -> ouvrir cette page dans Safari, puis <strong>Partager → Ajouter à l’écran d’accueil</strong>.
-    </footer>
+    <div class="card">
+      <form id="txForm">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="accountSelect" required>
+            <option value="courant">Compte courant</option>
+            <option value="livret">Livret</option>
+          </select>
+          <select id="typeSelect">
+            <option value="expense">Dépense</option>
+            <option value="income">Recette</option>
+          </select>
+          <input id="label" placeholder="Libellé (ex : Courses)" required>
+          <input id="amount" type="text" inputmode="decimal" placeholder="Montant (ex: 12.50 ou 12,50)" required style="width:120px">
+          <input id="date" type="date" required style="width:150px">
+          <button type="submit">Ajouter</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Transactions récentes</h3>
+      <div id="txList"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Résumé</h3>
+      <div class="small">Total recettes / dépenses / solde</div>
+      <div class="summary-grid" style="margin-top:8px">
+        <div><div class="small">Recettes</div><div id="totalIncome" class="balance">0 €</div></div>
+        <div><div class="small">Dépenses</div><div id="totalExpense" class="balance">0 €</div></div>
+        <div><div class="small">Solde</div><div id="totalBalance" class="balance">0 €</div></div>
+      </div>
+    </div>
+
+    <footer>Pour installer : ouvrir cette page dans Safari, puis <strong>Partager → Ajouter à l'écran d'accueil</strong>. <br>Si tu veux un accès hors-ligne fiable, active GitHub Pages et attends quelques minutes.</footer>
   </div>
 
-  <script>
-// ====== PWA Gestion Comptes - correction dates iOS et montants avec virgule ======
-const STORAGE_KEY = 'pwa_budget_v1';
+<script>
+// PWA Gestion Comptes - iOS-friendly
+const STORAGE_KEY = 'pwa_budget_final_v1';
 const defaultState = { accounts: { courant: {name:'Compte courant', balance:1200}, livret: {name:'Livret', balance:3400} }, transactions: [] };
 let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || JSON.stringify(defaultState));
 
-const accountsContainer = document.getElementById('accountsContainer');
+const txForm = document.getElementById('txForm');
 const txList = document.getElementById('txList');
 const totalIncomeEl = document.getElementById('totalIncome');
 const totalExpenseEl = document.getElementById('totalExpense');
 const totalBalanceEl = document.getElementById('totalBalance');
+const dateInput = document.getElementById('date');
 
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function formatMoney(n){ return Number(n).toLocaleString('fr-FR',{style:'currency',currency:'EUR'}) }
-function escapeHtml(text){ const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',''':'&#039;'}; return text.replace(/[&<>"']/g,m=>map[m]); }
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function formatMoney(n){ return Number(n).toLocaleString('fr-FR',{style:'currency',currency:'EUR'}); }
+function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 
-function renderAccounts(){
-  accountsContainer.innerHTML='';
-  for(const key in state.accounts){
-    const acc = state.accounts[key];
-    const el = document.createElement('div');
-    el.className='card';
-    el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
-      <div><div class="small">${acc.name}</div><div class="balance">${formatMoney(acc.balance)}</div></div>
-      <div class="small">${key}</div></div>`;
-    accountsContainer.appendChild(el);
-  }
-}
-
-function renderTxList(){
+function render(){
   txList.innerHTML='';
-  const sorted = [...state.transactions].sort((a,b)=> new Date(b.date)-new Date(a.date));
-  for(const t of sorted.slice(0,80)){
-    const div = document.createElement('div');
-    div.className='tx '+(t.type==='income'?'income':'expense');
-    div.innerHTML=`<div><div style="font-weight:600">${escapeHtml(t.label)}</div><div class="small">${state.accounts[t.account].name} · ${t.date}</div></div>
-      <div style="text-align:right"><div style="font-weight:700">${t.type==='income'?'+':''}${formatMoney(t.amount)}</div></div>`;
-    txList.appendChild(div);
-  }
-}
-
-function recalc(){
   let income=0, expense=0;
-  const balances={};
-  for(const k in state.accounts) balances[k] = Number(state.accounts[k].balance || 0);
-  const sorted = [...state.transactions].sort((a,b)=> new Date(a.date)-new Date(b.date));
+  const balances = { courant: Number(state.accounts.courant.balance||0), livret: Number(state.accounts.livret.balance||0) };
+  const sorted = [...state.transactions].sort((a,b)=> new Date(b.date) - new Date(a.date));
   for(const t of sorted){
-    const amt = Number(t.amount || 0);
-    if(t.type==='income'){ income+=amt; balances[t.account]+=amt }
-    else{ expense+=amt; balances[t.account]-=amt }
+    const div = document.createElement('div');
+    div.className = 'tx ' + (t.type==='income'?'income':'expense');
+    div.innerHTML = `<div>${escapeHtml(t.label)} <span class="small">(${t.date})</span> · ${escapeHtml(state.accounts[t.account].name)}</div><div>${t.type==='income'?'+':''}${formatMoney(t.amount)}</div>`;
+    txList.appendChild(div);
+    if(t.type === 'income'){ income += Number(t.amount); balances[t.account] += Number(t.amount); }
+    else { expense += Number(t.amount); balances[t.account] -= Number(t.amount); }
   }
-  const totalBalance = Object.values(balances).reduce((a,b)=>a+b,0);
   totalIncomeEl.textContent = formatMoney(income);
   totalExpenseEl.textContent = formatMoney(expense);
-  totalBalanceEl.textContent = formatMoney(totalBalance);
-  renderAccounts();
-  renderTxList();
-  saveState();
+  totalBalanceEl.textContent = formatMoney(balances.courant + balances.livret);
+  save();
 }
 
-document.getElementById('txForm').addEventListener('submit', e=>{
+txForm.addEventListener('submit', function(e){
   e.preventDefault();
   const acc = document.getElementById('accountSelect').value;
   const type = document.getElementById('typeSelect').value;
   const label = document.getElementById('label').value.trim();
-  let amount = document.getElementById('amount').value.trim();
-  let date = document.getElementById('date').value;
-
-  if(!label || !amount || !date) return alert('Libellé, montant et date obligatoires');
-
-  // convertir virgule en point pour JS
-  amount = parseFloat(amount.replace(',', '.'));
-  if(isNaN(amount)) return alert('Montant invalide');
-
-  // forcer format ISO pour Safari iOS
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){
-    const d = new Date(date);
-    date = d.toISOString().slice(0,10);
+  let amountRaw = document.getElementById('amount').value.trim();
+  // accept comma or dot decimals
+  amountRaw = amountRaw.replace(',', '.');
+  const amount = parseFloat(amountRaw);
+  // handle iOS date reliably
+  let dateVal = null;
+  if(dateInput.valueAsDate && !isNaN(dateInput.valueAsDate.getTime())){
+    dateVal = dateInput.valueAsDate.toISOString().slice(0,10);
+  } else {
+    // fallback: try parse string
+    const d = new Date(dateInput.value || dateInput.getAttribute('value') || '');
+    if(!isNaN(d.getTime())) dateVal = d.toISOString().slice(0,10);
   }
-
-  state.transactions.push({account:acc,type:type,label:label,amount:amount,date:date});
-  recalc();
-  e.target.reset();
-  document.getElementById('date').value = new Date().toISOString().slice(0,10);
+  if(!label || isNaN(amount) || !dateVal){ alert('Libellé, montant (ex: 12.50) et date valides sont requis'); return; }
+  state.transactions.push({ account: acc, type: type, label: label, amount: Math.round(amount*100)/100, date: dateVal });
+  render();
+  txForm.reset();
+  dateInput.valueAsDate = new Date();
 });
 
-// initialisation
-document.getElementById('date').value = new Date().toISOString().slice(0,10);
-recalc();
-renderAccounts();
+// set default date to today
+dateInput.valueAsDate = new Date();
+render();
+
+// register simple service worker for offline caching
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').then(()=> console.log('sw registered')).catch(()=> console.log('sw failed'));
+}
 </script>
 </body>
 </html>
