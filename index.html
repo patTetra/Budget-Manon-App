@@ -1,185 +1,27 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Budget Manon — PWA (photos & export)</title>
-<meta name="description" content="Gestion comptes, prévisionnel, photos de factures (stockées localement)." />
-<style>
-:root{--bg:#f5f7fb;--text:#0f172a;--muted:#6b7280;--accent:#3b82f6}
-body{font-family:Inter,system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;margin:0;background:var(--bg);color:var(--text)}
-.wrap{max-width:980px;margin:16px auto;padding:18px}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-h1{font-size:20px;margin:0}
-.small{font-size:13px;color:var(--muted)}
-.flex{display:flex;gap:12px;flex-wrap:wrap}
-.card{padding:16px;border-radius:12px;box-shadow:0 6px 14px rgba(15,23,42,0.06);background:#fff;flex:1;min-width:240px;transition:transform .25s;margin-bottom:12px}
-.card:hover{transform:translateY(-4px)}
-.label{font-size:13px;color:var(--muted);margin-bottom:6px}
-.card-input{width:100%;font-weight:700;text-align:right;font-size:18px;border:none;background:transparent;color:var(--text)}
-.card-input:focus{outline:none}
-#card-courant{background:linear-gradient(180deg,#cfe9ff,#a3d5ff)}
-#card-livret{background:linear-gradient(180deg,#eaffea,#b2f7b2)}
-input[type=text], input[type=date], select, input[type=number]{padding:10px;border-radius:8px;border:1px solid #e6e9ef;background:#fff}
-button{background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
-.btn-ghost{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:8px;border-radius:8px}
-.tx{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;margin-bottom:8px;background:#fff;box-shadow:0 2px 6px rgba(2,6,23,0.04)}
-.tx .meta{display:flex;gap:8px;align-items:center}
-.thumb{width:48px;height:48px;border-radius:6px;object-fit:cover;border:1px solid #e6e9ef;cursor:pointer}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:50}
-.modal img{max-width:92vw;max-height:92vh;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
-@media (max-width:720px){ .flex{flex-direction:column} .card{min-width:unset} }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#BD33A4"/>
+  <title>Comptes Manon</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div class="wrap">
-  <div class="header">
-    <h1>Budget Manon</h1>
-    <div class="small">Compte chèque & Livret</div>
-  </div>
+  <header>
+    <h1>Comptes Manon</h1>
+    <nav>
+      <button id="tab-cheque" class="active">Compte chèque</button>
+      <button id="tab-livret">Livret</button>
+      <button id="tab-previsionnel">Prévisionnel</button>
+    </nav>
+  </header>
 
-  <!-- Cards -->
-  <div class="flex">
-    <div class="card" id="card-courant">
-      <div class="label">Compte chèque</div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div class="small">Solde actuel (€)</div>
-        <input id="balance-courant" type="number" class="card-input" step="0.01" placeholder="0.00" />
-      </div>
-      <div style="margin-top:12px" class="small">Prévisionnel fin de mois</div>
-      <div id="forecast-courant" style="font-weight:700;font-size:18px;margin-top:6px">0 €</div>
-    </div>
-    <div class="card" id="card-livret">
-      <div class="label">Livret</div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div class="small">Solde actuel (€)</div>
-        <input id="balance-livret" type="number" class="card-input" step="0.01" placeholder="0.00" />
-      </div>
-      <div style="margin-top:12px" class="small">Prévisionnel fin de mois</div>
-      <div id="forecast-livret" style="font-weight:700;font-size:18px;margin-top:6px">0 €</div>
-    </div>
-  </div>
+  <main id="content"></main>
 
-  <!-- Fixed sections -->
-  <div class="card">
-    <h3 style="margin-top:0">Revenus fixes</h3>
-    <div id="fixed-incomes"></div>
-    <div style="margin-top:10px"><button id="add-fixed-income" class="btn-ghost">Ajouter revenu fixe</button></div>
-  </div>
-  <div class="card">
-    <h3 style="margin-top:0">Dépenses fixes</h3>
-    <div id="fixed-expenses"></div>
-    <div style="margin-top:10px"><button id="add-fixed-expense" class="btn-ghost">Ajouter dépense fixe</button></div>
-  </div>
+  <button id="add-btn" class="floating-btn">+</button>
 
-  <!-- Transactions -->
-  <div class="card">
-    <h3 style="margin-top:0">Ajouter transaction / prévision</h3>
-    <form id="txForm">
-      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
-        <select id="accountSelect" required>
-          <option value="courant">Compte chèque</option>
-          <option value="livret">Livret</option>
-        </select>
-        <select id="typeSelect">
-          <option value="expense">Dépense</option>
-          <option value="income">Recette</option>
-        </select>
-        <input id="label" type="text" placeholder="Libellé (ex : Courses)" required style="min-width:140px" />
-        <input id="amount" type="text" inputmode="decimal" placeholder="Montant (ex: 12.50)" style="width:120px" required />
-        <input id="date" type="date" required />
-        <input id="photo" type="file" accept="image/*" capture="environment" />
-        <button type="submit">Ajouter</button>
-      </div>
-    </form>
-    <div style="margin-top:14px">
-      <h4 style="margin:0 0 8px 0">Transactions prévues</h4>
-      <div id="txList"></div>
-    </div>
-  </div>
-
-  <!-- Export button -->
-  <div style="text-align:center;margin:20px 0">
-    <button id="exportBtn">Exporter CSV + images (ZIP)</button>
-  </div>
-</div>
-
-<!-- modal image viewer -->
-<div id="imgModal" class="modal" style="display:none" onclick="closeModal()">
-  <img id="modalImg" src="" alt="photo" />
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.11.0/jszip.min.js"></script>
-<script>
-/* ======= Storage & IndexedDB ======= */
-const STORAGE_KEY='budget_manon_photos_v2';
-let state=JSON.parse(localStorage.getItem(STORAGE_KEY)||JSON.stringify({balances:{courant:0,livret:0},transactions:[],fixedIncomes:[],fixedExpenses:[]}));
-const DB_NAME='BudgetManonImages'; const DB_STORE='images';
-function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB_NAME,1); r.onupgradeneeded=()=>r.result.createObjectStore(DB_STORE); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });}
-function idbPut(key,blob){return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(DB_STORE,'readwrite').objectStore(DB_STORE); const req=tx.put(blob,key); req.onsuccess=()=>{db.close();res(true);}; req.onerror=()=>{db.close();rej(req.error);};}));}
-function idbGet(key){return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(DB_STORE,'readonly').objectStore(DB_STORE); const req=tx.get(key); req.onsuccess=()=>{db.close();res(req.result);}; req.onerror=()=>{db.close();rej(req.error);};}));}
-function idbDelete(key){return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(DB_STORE,'readwrite').objectStore(DB_STORE); const req=tx.delete(key); req.onsuccess=()=>{db.close();res(true);}; req.onerror=()=>{db.close();rej(req.error);};}));}
-
-/* ======= DOM ======= */
-const balanceCourant=document.getElementById('balance-courant');
-const balanceLivret=document.getElementById('balance-livret');
-const forecastCourant=document.getElementById('forecast-courant');
-const forecastLivret=document.getElementById('forecast-livret');
-const fixedIncomesEl=document.getElementById('fixed-incomes');
-const fixedExpensesEl=document.getElementById('fixed-expenses');
-const txForm=document.getElementById('txForm');
-const txList=document.getElementById('txList');
-const photoInput=document.getElementById('photo');
-const imgModal=document.getElementById('imgModal');
-const modalImg=document.getElementById('modalImg');
-const exportBtn=document.getElementById('exportBtn');
-
-/* ======= Utils ======= */
-function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
-function uid(){return Math.random().toString(36).slice(2,9)+Date.now().toString(36);}
-function formatMoney(n){return Number(n).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});}
-
-/* ======= Image compression ======= */
-function compressImageFile(file,maxSize=800,quality=0.8){return new Promise((res,rej)=>{const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>maxSize||h>maxSize){if(w>h){h=Math.round(h*(maxSize/w)); w=maxSize;} else{w=Math.round(w*(maxSize/h)); h=maxSize;}}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);canvas.toBlob(blob=>{if(!blob) return rej(new Error('Compression failed'));res(blob);},'image/jpeg',quality);}; img.onerror=e=>rej(e); img.src=reader.result;}; reader.onerror=e=>rej(e); reader.readAsDataURL(file);});}
-
-/* ======= Render fixed ======= */
-function renderFixed(){
-  fixedIncomesEl.innerHTML='';
-  state.fixedIncomes.forEach((f,i)=>{const row=document.createElement('div');row.className='flex';row.style.marginBottom='8px';row.innerHTML=`<input data-i="${i}" class="f-label" value="${f.label}" style="flex:1;padding:8px;border-radius:8px;border:1px solid #e6e9ef"><input data-i="${i}" type="number" class="f-amount" step="0.01" value="${Number(f.amount)}" style="width:120px;padding:8px;border-radius:8px;border:1px solid #e6e9ef">`;fixedIncomesEl.appendChild(row);});
-  fixedExpensesEl.innerHTML='';
-  state.fixedExpenses.forEach((f,i)=>{const row=document.createElement('div');row.className='flex';row.style.marginBottom='8px';row.innerHTML=`<input data-i="${i}" class="f-label-exp" value="${f.label}" style="flex:1;padding:8px;border-radius:8px;border:1px solid #e6e9ef"><input data-i="${i}" type="number" class="f-amount-exp" step="0.01" value="${Number(f.amount)}" style="width:120px;padding:8px;border-radius:8px;border:1px solid #e6e9ef">`;fixedExpensesEl.appendChild(row);});
-}
-
-/* ======= Render transactions ======= */
-async function render(){
-  txList.innerHTML='';
-  const forecast={courant:Number(balanceCourant.value||0),livret:Number(balanceLivret.value||0)};
-  state.fixedIncomes.forEach(f=>forecast.courant+=Number(f.amount||0));
-  state.fixedExpenses.forEach(f=>forecast.courant-=Number(f.amount||0));
-  const sorted=[...state.transactions].sort((a,b)=>new Date(b.date)-new Date(a.date));
-  for(const t of sorted){
-    const tx=document.createElement('div'); tx.className='tx';
-    let thumbHtml='';
-    if(t.imageId){try{const blob=await idbGet(t.imageId);if(blob){const url=URL.createObjectURL(blob);thumbHtml=`<img class="thumb" src="${url}" data-imageid="${t.imageId}"/>`;}}catch(e){console.warn(e);}}
-    const left=document.createElement('div'); left.className='meta'; left.style.gap='12px'; left.innerHTML=`${thumbHtml}<div><div style="font-weight:600">${t.label}</div><div class="small">${t.account} · ${t.date}</div></div>`;
-    const right=document.createElement('div'); right.innerHTML=`${t.type==='income'?'+':''}${formatMoney(t.amount)}<div style="margin-top:6px"><button class="btn-ghost" data-id="${t.id}" style="font-size:12px">Suppr</button></div>`;
-    tx.appendChild(left); tx.appendChild(right); txList.appendChild(tx);
-  }
-  forecastCourant.textContent=formatMoney(forecast.courant);
-  forecastLivret.textContent=formatMoney(forecast.livret);
-  save();
-}
-
-/* ======= Events ======= */
-document.getElementById('add-fixed-income').addEventListener('click',()=>{state.fixedIncomes.push({label:'Salaire',amount:0});renderFixed();save();render();});
-document.getElementById('add-fixed-expense').addEventListener('click',()=>{state.fixedExpenses.push({label:'Loyer',amount:0});renderFixed();save();render();});
-
-fixedIncomesEl.addEventListener('input',e=>{const t=e.target,i=Number(t.dataset.i); if(t.classList.contains('f-label'))state.fixedIncomes[i].label=t.value; if(t.classList.contains('f-amount'))state.fixedIncomes[i].amount=Number(t.value||0); save(); render();});
-fixedExpensesEl.addEventListener('input',e=>{const t=e.target,i=Number(t.dataset.i); if(t.classList.contains('f-label-exp'))state.fixedExpenses[i].label=t.value; if(t.classList.contains('f-amount-exp'))state.fixedExpenses[i].amount=Number(t.value||0); save(); render();});
-
-balanceCourant.addEventListener('change',()=>{state.balances.courant=Number(balanceCourant.value||0);save();render();});
-balanceLivret.addEventListener('change',()=>{state.balances.livret=Number(balanceLivret.value||0);save();render();});
-
-txForm.addEventListener('submit',async e=>{e.preventDefault(); const acc=document.getElementById('accountSelect').value; const type=document.getElementById('typeSelect').value; const label=document.getElementById('label').value.trim(); let amount=parseFloat(document.getElementById('amount').value.replace(',','.')); let date=document.getElementById('date').value; if(!label||isNaN(amount)||!date){alert('Libellé, montant et date valides requis');return;} let imageId=null; const file=photoInput.files && photoInput.files[0]; if(file){try{const blob=await compressImageFile(file,800,0.8); imageId=uid(); await idbPut(imageId,blob);}catch(err){console.warn(err); alert('Erreur lors du traitement de l\'image');}} state.transactions.push({id:uid(),account:acc,type:type,label:label,amount:Math.round(amount*100)/100,date:date,imageId:imageId}); txForm.reset(); photoInput.value=''; document.getElementById('date').valueAsDate=new Date(); save(); render();});
-
-txList.addEventListener('click',async e=>{const btn=e.target.closest('button[data-id]'); if(btn){const id=btn.getAttribute('data-id'); if(!confirm('Supprimer cette transaction ?'))return; const idx=state.transactions.findIndex(t=>t.id===id); if(idx>=0){const imgId=state.transactions[idx].imageId; if(imgId){try{await idbDelete(imgId);}catch(err){console.warn(err);}} state.transactions.splice(idx,1); save();
+  <script src="app.js"></script>
+</body>
+</html>
