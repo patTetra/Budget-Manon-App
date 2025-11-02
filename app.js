@@ -1,3 +1,5 @@
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz3UHDaYQIiMUyv096qN4h3seKizmAzV-VlNetoxCe4ezW7_JkcupKukAAZLg36tTfX/exec";
+
 // Gestion des onglets
 document.getElementById('tab-cheque').addEventListener('click', () => loadTab('cheque'));
 document.getElementById('tab-livret').addEventListener('click', () => loadTab('livret'));
